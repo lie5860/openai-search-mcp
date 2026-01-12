@@ -1,0 +1,51 @@
+{
+  "name": "grok-search-mcp",
+  "version": "1.0.1",
+  "description": "MCP server for AI model search capabilities using Grok",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "grok-search": "./bin/grok-search.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && node dist/server.js",
+    "start": "node dist/server.js",
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "grok",
+    "search",
+    "ai",
+    "claude",
+    "model-context-protocol"
+  ],
+  "author": "lie5860",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lie5860/grok-search-npm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lie5860/grok-search-npm/issues"
+  },
+  "homepage": "https://github.com/lie5860/grok-search-npm#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "typescript": "^5.5.3"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ]
+}

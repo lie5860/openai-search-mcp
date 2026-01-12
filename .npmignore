@@ -1,0 +1,19 @@
+# 源码
+src/
+tsconfig.json
+*.ts
+!.d.ts
+
+# 敏感文件
+.env
+.env.*
+.env.example
+*.log
+.DS_Store
+
+# 其他
+.gitignore
+.git/
+node_modules/
+test-*.js
+*.tgz
