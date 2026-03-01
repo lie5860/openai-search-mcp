@@ -110,6 +110,16 @@ export class Config {
   }
 
   /**
+   * web_fetch 默认使用的引擎（未传 fetch_engine 时生效）
+   * 环境变量 FETCH_ENGINE=llm|tavily|firecrawl，默认 llm
+   */
+  get defaultFetchEngine(): "llm" | "tavily" | "firecrawl" {
+    const v = (process.env.FETCH_ENGINE || "llm").toLowerCase();
+    if (v === "tavily" || v === "firecrawl") return v;
+    return "llm";
+  }
+
+  /**
    * 加载配置文件
    */
   async loadConfig(): Promise<ConfigObject | null> {

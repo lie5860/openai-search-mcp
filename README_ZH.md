@@ -91,7 +91,10 @@ openai-search
 
 ### Step 2: 配置环境变量
 
-编辑 `~/.config/claude/claude_desktop_config.json` (macOS/Linux) 或 `%APPDATA%\claude\claude_desktop_config.json` (Windows)：
+编辑 `~/.config/claude/claude_desktop_config.json` (macOS/Linux) 或 `%APPDATA%\claude\claude_desktop_config.json` (Windows)，按你使用的场景复制对应配置（三选一）。
+
+**场景一：只用 LLM 做 fetch（默认）**  
+不配置 Tavily/Firecrawl，`web_fetch` 使用当前 OpenAI 兼容模型。只需必填项。
 
 ```json
 {
@@ -110,10 +113,57 @@ openai-search
 }
 ```
 
-**重要提示**：
-- 将 `https://your-api-endpoint.com/v1` 替换为你的实际 API 端点
-- 将 `your-api-key-here` 替换为你的实际 API 密钥
-- 该端点必须是 **OpenAI 兼容的**
+**场景二：默认用 Tavily 做 fetch**  
+配置 Tavily 后，可设置 `FETCH_ENGINE=tavily`，这样未传 `fetch_engine` 时也会用 Tavily。
+
+```json
+{
+  "mcpServers": {
+    "openai-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "openai-search-mcp"],
+      "env": {
+        "OPENAI_API_URL": "https://api.openai.com/v1",
+        "OPENAI_API_KEY": "your-api-key-here",
+        "OPENAI_MODEL": "gpt-4o",
+        "FETCH_ENGINE": "tavily",
+        "TAVILY_API_KEY": "tvly-your-tavily-key",
+        "TAVILY_API_URL": "https://api.tavily.com"
+      }
+    }
+  }
+}
+```
+
+**场景三：默认用 Firecrawl 做 fetch**  
+配置 Firecrawl 并设置 `FETCH_ENGINE=firecrawl`，未传 `fetch_engine` 时用 Firecrawl。
+
+```json
+{
+  "mcpServers": {
+    "openai-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "openai-search-mcp"],
+      "env": {
+        "OPENAI_API_URL": "https://api.openai.com/v1",
+        "OPENAI_API_KEY": "your-api-key-here",
+        "OPENAI_MODEL": "gpt-4o",
+        "FETCH_ENGINE": "firecrawl",
+        "FIRECRAWL_API_KEY": "your-firecrawl-api-key",
+        "FIRECRAWL_API_URL": "https://api.firecrawl.dev/v2"
+      }
+    }
+  }
+}
+```
+
+- **必填**（所有场景）：`OPENAI_API_URL`、`OPENAI_API_KEY`；`OPENAI_MODEL` 可选（默认 `gpt-4o`）。
+- **默认 fetch 引擎**：`FETCH_ENGINE=llm|tavily|firecrawl`，未设置时默认为 `llm`。调用 `web_fetch` 时也可单次传参 `fetch_engine` 覆盖。
+- **场景二** 必填：`TAVILY_API_KEY`；**场景三** 必填：`FIRECRAWL_API_KEY`。对应 `*_API_URL` 一般可不改。
+
+**重要提示**：将示例中的 API 地址和密钥替换为你的真实配置；端点须为 **OpenAI 兼容**。
 
 ### Step 3: 重启 Claude Desktop
 
@@ -160,7 +210,7 @@ openai-search
 
 **参数：**
 - `url` (必填) - 要抓取的网页地址
-- `fetch_engine` (可选) - `"llm"`（默认）| `"tavily"` | `"firecrawl"`
+- `fetch_engine` (可选) - `"llm"` | `"tavily"` | `"firecrawl"`。不传时使用服务端默认（环境变量 `FETCH_ENGINE`，默认为 `llm`）。
   - **llm**：使用你的 OpenAI 兼容模型（需模型具备 browse 能力）。通常较慢；可能返回缓存或模型推断内容，有时会多出无关文字。
   - **tavily**：[Tavily Extract API](https://docs.tavily.com)（需设置 `TAVILY_API_KEY`）。通常更快且返回真实页面内容。
   - **firecrawl**：[Firecrawl Scrape API](https://docs.firecrawl.dev)（需设置 `FIRECRAWL_API_KEY`）。通常更快且返回真实页面内容。
@@ -178,7 +228,7 @@ openai-search
 
 **返回信息：**
 - API URL、模型及连接测试（响应时间、可用模型列表）
-- **fetch_engines**：Tavily / Firecrawl 是否已配置（供 `web_fetch` 使用）
+- **fetch_engines**：`default`（当前默认 fetch 引擎，来自 `FETCH_ENGINE`）、Tavily/Firecrawl 是否已配置
 
 **使用示例：**
 ```
@@ -277,8 +327,9 @@ openai-search-mcp/
 | `OPENAI_LOG_LEVEL` | 日志级别 | 否 | `INFO` |
 | `TAVILY_API_KEY` | Tavily API 密钥（`web_fetch` 使用 `fetch_engine=tavily` 时） | 否 | - |
 | `TAVILY_API_URL` | Tavily API 地址 | 否 | `https://api.tavily.com` |
-| `FIRECRAWL_API_KEY` | Firecrawl API 密钥（`web_fetch` 使用 `fetch_engine=firecrawl` 时） | 否 | - |
+| `FIRECRAWL_API_KEY` | Firecrawl API 密钥（默认或单次使用 firecrawl 时） | 否 | - |
 | `FIRECRAWL_API_URL` | Firecrawl API 地址 | 否 | `https://api.firecrawl.dev/v2` |
+| `FETCH_ENGINE` | web_fetch 默认引擎（未传 fetch_engine 时生效） | 否 | `llm` |
 
 ---
 

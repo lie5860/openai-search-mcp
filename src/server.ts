@@ -93,7 +93,7 @@ server.registerTool(
 The \`url\` should be a valid HTTP/HTTPS web address pointing to the target page.
 Ensure the URL is complete and accessible (not behind authentication or paywalls).
 
-\`fetch_engine\` (optional): Which engine to use for fetching. Default \`llm\` uses the same OpenAI-compatible model (requires model browse capability). Use \`tavily\` or \`firecrawl\` for dedicated crawl services (requires TAVILY_API_KEY or FIRECRAWL_API_KEY).
+\`fetch_engine\` (optional): Which engine to use. When omitted, the server uses the \`FETCH_ENGINE\` env (default \`llm\`). \`llm\` = OpenAI-compatible model; \`tavily\` / \`firecrawl\` = dedicated crawl (set TAVILY_API_KEY or FIRECRAWL_API_KEY).
 
 Returns
 -------
@@ -112,16 +112,16 @@ Notes
       fetch_engine: z
         .enum(["llm", "tavily", "firecrawl"])
         .optional()
-        .default("llm")
         .describe(
-          "Engine for fetch: llm (default, uses model), tavily (Tavily Extract API), firecrawl (Firecrawl Scrape API)"
+          "Engine for fetch: llm (model), tavily (Tavily API), firecrawl (Firecrawl API). When omitted, server uses FETCH_ENGINE env."
         ),
     },
   },
-  async ({ url, fetch_engine = "llm" }) => {
+  async ({ url, fetch_engine }) => {
     const ctx = new MCPCtx();
+    const engine = fetch_engine ?? config.defaultFetchEngine;
 
-    if (fetch_engine === "llm") {
+    if (engine === "llm") {
       const openaiConfig = await config.getConfig();
       const provider = new OpenAISearchProvider(
         openaiConfig.apiUrl,
@@ -134,7 +134,7 @@ Notes
       return { content: [{ type: "text", text: results }] };
     }
 
-    if (fetch_engine === "tavily") {
+    if (engine === "tavily") {
       const apiKey = config.tavilyApiKey;
       if (!apiKey) {
         return {
@@ -168,7 +168,7 @@ Notes
       }
     }
 
-    if (fetch_engine === "firecrawl") {
+    if (engine === "firecrawl") {
       const apiKey = config.firecrawlApiKey;
       if (!apiKey) {
         return {
@@ -197,7 +197,7 @@ Notes
       };
     }
 
-    return { content: [{ type: "text" as const, text: `Unknown fetch_engine: ${fetch_engine}` }] };
+    return { content: [{ type: "text" as const, text: `Unknown fetch_engine: ${engine}` }] };
   }
 );
 
@@ -275,7 +275,7 @@ Notes
       status: validation.valid ? "✅ Configuration valid" : "❌ Configuration invalid",
       test_result: testResult,
       fetch_engines: {
-        llm: "default, uses OpenAI-compatible model",
+        default: config.defaultFetchEngine,
         tavily_configured: Boolean(config.tavilyApiKey),
         firecrawl_configured: Boolean(config.firecrawlApiKey),
       },

@@ -92,7 +92,10 @@ You will need:
 
 ### Step 2: Configure Environment Variables
 
-Edit `~/.config/claude/claude_desktop_config.json` (macOS/Linux) or `%APPDATA%\claude\claude_desktop_config.json` (Windows):
+Edit `~/.config/claude/claude_desktop_config.json` (macOS/Linux) or `%APPDATA%\claude\claude_desktop_config.json` (Windows). Pick one of the three scenarios below and copy the matching config.
+
+**Scenario 1: Use LLM for fetch only (default)**  
+No Tavily/Firecrawl; `web_fetch` uses your OpenAI-compatible model. Only required vars.
 
 ```json
 {
@@ -110,6 +113,56 @@ Edit `~/.config/claude/claude_desktop_config.json` (macOS/Linux) or `%APPDATA%\c
   }
 }
 ```
+
+**Scenario 2: Use Tavily as default fetch engine**  
+Set `FETCH_ENGINE=tavily` and Tavily keys so that when `fetch_engine` is not passed, Tavily is used.
+
+```json
+{
+  "mcpServers": {
+    "openai-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "openai-search-mcp"],
+      "env": {
+        "OPENAI_API_URL": "https://api.openai.com/v1",
+        "OPENAI_API_KEY": "your-api-key-here",
+        "OPENAI_MODEL": "gpt-4o",
+        "FETCH_ENGINE": "tavily",
+        "TAVILY_API_KEY": "tvly-your-tavily-key",
+        "TAVILY_API_URL": "https://api.tavily.com"
+      }
+    }
+  }
+}
+```
+
+**Scenario 3: Use Firecrawl as default fetch engine**  
+Set `FETCH_ENGINE=firecrawl` and Firecrawl keys so that when `fetch_engine` is not passed, Firecrawl is used.
+
+```json
+{
+  "mcpServers": {
+    "openai-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "openai-search-mcp"],
+      "env": {
+        "OPENAI_API_URL": "https://api.openai.com/v1",
+        "OPENAI_API_KEY": "your-api-key-here",
+        "OPENAI_MODEL": "gpt-4o",
+        "FETCH_ENGINE": "firecrawl",
+        "FIRECRAWL_API_KEY": "your-firecrawl-api-key",
+        "FIRECRAWL_API_URL": "https://api.firecrawl.dev/v2"
+      }
+    }
+  }
+}
+```
+
+- **Required** (all scenarios): `OPENAI_API_URL`, `OPENAI_API_KEY`; `OPENAI_MODEL` is optional (default `gpt-4o`).
+- **Default fetch engine**: `FETCH_ENGINE=llm|tavily|firecrawl`; when unset, defaults to `llm`. You can still pass `fetch_engine` per call to override.
+- **Scenario 2** requires `TAVILY_API_KEY`; **Scenario 3** requires `FIRECRAWL_API_KEY`. The `*_API_URL` values usually need not be changed.
 
 **Important**:
 - Replace `https://your-api-endpoint.com/v1` with your actual API endpoint
@@ -161,7 +214,7 @@ Extract complete content from a URL and return it as Markdown. You can choose wh
 
 **Parameters:**
 - `url` (required) - Web page URL to fetch
-- `fetch_engine` (optional) - `"llm"` (default) | `"tavily"` | `"firecrawl"`
+- `fetch_engine` (optional) - `"llm"` | `"tavily"` | `"firecrawl"`. When omitted, the server default is used (env `FETCH_ENGINE`, default `llm`).
   - **llm** – Uses your OpenAI-compatible model (requires model browse capability). Often slower; may return cached or model-inferred content and sometimes adds extra text.
   - **tavily** – [Tavily Extract API](https://docs.tavily.com) (set `TAVILY_API_KEY`). Typically faster and returns real page content.
   - **firecrawl** – [Firecrawl Scrape API](https://docs.firecrawl.dev) (set `FIRECRAWL_API_KEY`). Typically faster and returns real page content.
@@ -179,7 +232,7 @@ Get current configuration and connection status.
 
 **Returns:**
 - API URL, model, and connection test (response time, available models)
-- **fetch_engines** – whether Tavily and Firecrawl are configured for `web_fetch`
+- **fetch_engines** – `default` (current default fetch engine from `FETCH_ENGINE`), and whether Tavily/Firecrawl are configured
 
 **Usage Examples:**
 ```
@@ -278,8 +331,9 @@ openai-search-mcp/
 | `OPENAI_LOG_LEVEL` | Log level | No | `INFO` |
 | `TAVILY_API_KEY` | Tavily API key (for `web_fetch` with `fetch_engine=tavily`) | No | - |
 | `TAVILY_API_URL` | Tavily API base URL | No | `https://api.tavily.com` |
-| `FIRECRAWL_API_KEY` | Firecrawl API key (for `web_fetch` with `fetch_engine=firecrawl`) | No | - |
+| `FIRECRAWL_API_KEY` | Firecrawl API key (when using firecrawl as default or per call) | No | - |
 | `FIRECRAWL_API_URL` | Firecrawl API base URL | No | `https://api.firecrawl.dev/v2` |
+| `FETCH_ENGINE` | Default fetch engine when `fetch_engine` is not passed | No | `llm` |
 
 ---
 
