@@ -82,6 +82,34 @@ export class Config {
   }
 
   /**
+   * Tavily API URL（可选，用于 web_fetch 的 tavily 引擎）
+   */
+  get tavilyApiUrl(): string {
+    return process.env.TAVILY_API_URL || "https://api.tavily.com";
+  }
+
+  /**
+   * Tavily API Key（可选；未设置时 fetch_engine=tavily 不可用）
+   */
+  get tavilyApiKey(): string {
+    return process.env.TAVILY_API_KEY || "";
+  }
+
+  /**
+   * Firecrawl API URL（可选，用于 web_fetch 的 firecrawl 引擎）
+   */
+  get firecrawlApiUrl(): string {
+    return process.env.FIRECRAWL_API_URL || "https://api.firecrawl.dev/v2";
+  }
+
+  /**
+   * Firecrawl API Key（可选；未设置时 fetch_engine=firecrawl 不可用）
+   */
+  get firecrawlApiKey(): string {
+    return process.env.FIRECRAWL_API_KEY || "";
+  }
+
+  /**
    * 加载配置文件
    */
   async loadConfig(): Promise<ConfigObject | null> {

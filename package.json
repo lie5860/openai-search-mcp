@@ -1,6 +1,6 @@
 {
   "name": "openai-search-mcp",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "MCP server for AI model search capabilities using OpenAI-compatible APIs",
   "type": "module",
   "main": "dist/server.js",
@@ -17,7 +17,10 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test-server": "node examples/example-server.js",
+    "test-fetch": "node examples/example-fetch-engines.js",
+    "test-search": "node examples/example-search.js"
   },
   "keywords": [
     "mcp",

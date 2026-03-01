@@ -20,17 +20,19 @@ English | [简体中文](./README_ZH.md)
 
 ## 📖 Overview
 
-OpenAI Search MCP is a high-performance Node.js/TypeScript implementation of an MCP (Model Context Protocol) server that integrates OpenAI-compatible API's powerful capabilities to provide real-time web search and web content extraction for Claude, Claude Code, and other AI assistants.
+OpenAI Search MCP is a high-performance Node.js/TypeScript MCP server that connects **your OpenAI-compatible API** to Claude, Claude Code, and other AI assistants. The backend model **must provide search capability** (search is always performed by your configured endpoint). Web fetching supports three engines: **LLM** (default, uses the same model’s browse capability), **Tavily**, and **Firecrawl**—selectable via the `fetch_engine` parameter when you need dedicated crawl services.
 
 ### ✨ Key Features
 
-- 🌐 **Real-time Web Search** - Break through AI knowledge cutoff and access the latest information
-- 🔍 **Smart Web Fetching** - Extract complete web content and convert to structured Markdown
-- 🔄 **Auto Retry Mechanism** - Intelligently handle network fluctuations and temporary errors
-- 📦 **Plug & Play** - Run with single `npx` command, no complex configuration needed
-- ⚡ **High Performance** - Cold start < 1 second, memory footprint < 30MB
-- 🔒 **Type Safety** - Complete TypeScript type definitions
-- 🛠️ **Fetch Polyfill** - Compatible with all Node.js 18+ environments
+- 🌐 **Real-time Web Search** - Powered by your OpenAI-compatible model (must have search)
+- 🔍 **Configurable Web Fetch** - Default LLM; optionally use **Tavily** or **Firecrawl** via `fetch_engine` for real HTTP crawl and anti-bot handling
+- 📄 **Structured Markdown** - Full-page extraction and conversion to Markdown
+
+**Why offer multiple fetch engines?** In practice, (1) **LLM fetch is often slower** than dedicated crawl APIs (e.g. ~14s vs ~1s for Tavily/Firecrawl). (2) **LLM may use cached or inferred content** and can **add irrelevant text**, so the result may not match the live page. When you need **fast, faithful, unmodified** content, use `fetch_engine=tavily` or `fetch_engine=firecrawl`.
+- 🔄 **Auto Retry** - Handles network and transient API errors
+- 📦 **Plug & Play** - Single `npx` command, minimal config
+- ⚡ **High Performance** - Cold start < 1 s, low memory footprint
+- 🔒 **Type Safety** - Full TypeScript definitions
 
 ---
 
@@ -155,15 +157,20 @@ Search for openai-search projects on GitHub
 
 ### 2️⃣ `web_fetch` - Web Fetching
 
-Extract complete content from specified URL and convert to Markdown format.
+Extract complete content from a URL and return it as Markdown. You can choose which engine performs the fetch:
 
 **Parameters:**
 - `url` (required) - Web page URL to fetch
+- `fetch_engine` (optional) - `"llm"` (default) | `"tavily"` | `"firecrawl"`
+  - **llm** – Uses your OpenAI-compatible model (requires model browse capability). Often slower; may return cached or model-inferred content and sometimes adds extra text.
+  - **tavily** – [Tavily Extract API](https://docs.tavily.com) (set `TAVILY_API_KEY`). Typically faster and returns real page content.
+  - **firecrawl** – [Firecrawl Scrape API](https://docs.firecrawl.dev) (set `FIRECRAWL_API_KEY`). Typically faster and returns real page content.
 
 **Usage Examples:**
 ```
-Fetch README content from https://github.com/lie5860/openai-search-mcp
-Get complete documentation from https://www.typescriptlang.org/docs
+Fetch README from https://github.com/lie5860/openai-search-mcp
+Fetch https://example.com using Tavily (fetch_engine=tavily)
+Get full doc from https://www.typescriptlang.org/docs (default LLM)
 ```
 
 ### 3️⃣ `get_config_info` - Configuration Diagnostics
@@ -171,9 +178,8 @@ Get complete documentation from https://www.typescriptlang.org/docs
 Get current configuration and connection status.
 
 **Returns:**
-- API URL and model configuration
-- Connection test results
-- Response time and available model information
+- API URL, model, and connection test (response time, available models)
+- **fetch_engines** – whether Tavily and Firecrawl are configured for `web_fetch`
 
 **Usage Examples:**
 ```
@@ -226,8 +232,10 @@ npm run build
 # Run development server
 npm run dev
 
-# Run tests
-npm test
+# Self-test (run after build)
+npm run test-server    # Config + search + LLM fetch
+npm run test-search    # Search + LLM fetch
+npm run test-fetch     # All fetch engines (llm / tavily / firecrawl)
 ```
 
 ### Project Structure
@@ -263,11 +271,15 @@ openai-search-mcp/
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `OPENAI_API_URL` | OpenAI-compatible API endpoint | Yes | - |
+| `OPENAI_API_URL` | OpenAI-compatible API endpoint (must support search) | Yes | - |
 | `OPENAI_API_KEY` | API key for your endpoint | Yes | - |
 | `OPENAI_MODEL` | Model identifier | No | `gpt-4o` |
 | `DEBUG` | Debug mode | No | `false` |
 | `OPENAI_LOG_LEVEL` | Log level | No | `INFO` |
+| `TAVILY_API_KEY` | Tavily API key (for `web_fetch` with `fetch_engine=tavily`) | No | - |
+| `TAVILY_API_URL` | Tavily API base URL | No | `https://api.tavily.com` |
+| `FIRECRAWL_API_KEY` | Firecrawl API key (for `web_fetch` with `fetch_engine=firecrawl`) | No | - |
+| `FIRECRAWL_API_URL` | Firecrawl API base URL | No | `https://api.firecrawl.dev/v2` |
 
 ---
 

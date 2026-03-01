@@ -9,7 +9,6 @@ import type { MCPContext } from "../types/index.js";
  * 异步日志工具
  */
 export class Logger {
-
   constructor() {
     this.ensureLogDir();
   }

@@ -1,10 +1,11 @@
-import { config } from "../config/index.js";
 import fetch from "node-fetch";
+
+import { config } from "../config/index.js";
 import { logInfo } from "../utils/logger.js";
+import { fetchPrompt, searchPrompt } from "../utils/prompt.js";
 import { retryWithContext } from "../utils/retry.js";
 
 import type { OpenAIPayload, OpenAIStreamResponse, MCPContext } from "../types/index.js";
-import {fetchPrompt, searchPrompt} from "../utils/prompt.js";
 
 /**
  * OpenAI API 提供者

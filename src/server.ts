@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
 import { createRequire } from "module";
 
-import { config } from "./config/index.js";
-import { OpenAISearchProvider } from "./providers/openai.js";
-import { logInfo } from "./utils/logger.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import fetch from "node-fetch";
+import { z } from "zod";
+
+import { config } from "./config/index.js";
+import { fetchWithFirecrawl } from "./providers/firecrawl.js";
+import { OpenAISearchProvider } from "./providers/openai.js";
+import { fetchWithTavily } from "./providers/tavily.js";
+import { logInfo } from "./utils/logger.js";
 
 import type { TestResult } from "./types/index.js";
 
@@ -67,7 +70,11 @@ A JSON-encoded string representing a list of search results. Each result include
   async ({ query, platform = "", min_results = 3, max_results = 10 }) => {
     const ctx = new MCPCtx();
     const openaiConfig = await config.getConfig();
-    const provider = new OpenAISearchProvider(openaiConfig.apiUrl, openaiConfig.apiKey, openaiConfig.model);
+    const provider = new OpenAISearchProvider(
+      openaiConfig.apiUrl,
+      openaiConfig.apiKey,
+      openaiConfig.model
+    );
 
     await logInfo(ctx, `Begin Search: ${query}`, config.debugEnabled);
     const results = await provider.search(query, platform, min_results, max_results, ctx);
@@ -86,12 +93,7 @@ server.registerTool(
 The \`url\` should be a valid HTTP/HTTPS web address pointing to the target page.
 Ensure the URL is complete and accessible (not behind authentication or paywalls).
 
-The function will:
-- Retrieve the full HTML content from the URL
-- Parse and extract all meaningful content (text, images, links, tables, code blocks)
-- Convert the HTML structure to well-formatted Markdown
-- Preserve the original content hierarchy and formatting
-- Remove scripts, styles, and other non-content elements
+\`fetch_engine\` (optional): Which engine to use for fetching. Default \`llm\` uses the same OpenAI-compatible model (requires model browse capability). Use \`tavily\` or \`firecrawl\` for dedicated crawl services (requires TAVILY_API_KEY or FIRECRAWL_API_KEY).
 
 Returns
 -------
@@ -101,28 +103,101 @@ A Markdown-formatted string containing:
 - Complete page content with preserved structure
 - All text, links, images, tables, and code blocks from the original page
 
-The output maintains 100% content fidelity with the source page and is ready for documentation, analysis, or further processing.
-
 Notes
 -----
 - Does NOT summarize or modify content - returns complete original text
-- Handles special characters, encoding (UTF-8), and nested structures
-- May not capture dynamically loaded content requiring JavaScript execution
-- Respects the original language without translation`,
+- \`tavily\` / \`firecrawl\` perform real HTTP fetch and handle anti-bot; \`llm\` depends on the model's browse capability.`,
     inputSchema: {
       url: z.string().describe("The URL of the web page to fetch"),
+      fetch_engine: z
+        .enum(["llm", "tavily", "firecrawl"])
+        .optional()
+        .default("llm")
+        .describe(
+          "Engine for fetch: llm (default, uses model), tavily (Tavily Extract API), firecrawl (Firecrawl Scrape API)"
+        ),
     },
   },
-  async ({ url }) => {
+  async ({ url, fetch_engine = "llm" }) => {
     const ctx = new MCPCtx();
-    const openaiConfig = await config.getConfig();
-    const provider = new OpenAISearchProvider(openaiConfig.apiUrl, openaiConfig.apiKey, openaiConfig.model);
 
-    await logInfo(ctx, `Begin Fetch: ${url}`, config.debugEnabled);
-    const results = await provider.fetch(url, ctx);
-    await logInfo(ctx, "Fetch Finished!", config.debugEnabled);
+    if (fetch_engine === "llm") {
+      const openaiConfig = await config.getConfig();
+      const provider = new OpenAISearchProvider(
+        openaiConfig.apiUrl,
+        openaiConfig.apiKey,
+        openaiConfig.model
+      );
+      await logInfo(ctx, `Begin Fetch (LLM): ${url}`, config.debugEnabled);
+      const results = await provider.fetch(url, ctx);
+      await logInfo(ctx, "Fetch Finished!", config.debugEnabled);
+      return { content: [{ type: "text", text: results }] };
+    }
 
-    return { content: [{ type: "text", text: results }] };
+    if (fetch_engine === "tavily") {
+      const apiKey = config.tavilyApiKey;
+      if (!apiKey) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "TAVILY_API_KEY is not set. Set the environment variable to use fetch_engine=tavily.",
+            },
+          ],
+        };
+      }
+      await logInfo(ctx, `Begin Fetch (Tavily): ${url}`, config.debugEnabled);
+      try {
+        const result = await fetchWithTavily(url, config.tavilyApiUrl, apiKey);
+        await logInfo(
+          ctx,
+          result ? "Fetch Finished (Tavily)!" : "Tavily returned no content.",
+          config.debugEnabled
+        );
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: result ?? "Tavily Extract returned no content for this URL.",
+            },
+          ],
+        };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        return { content: [{ type: "text" as const, text: `Tavily fetch failed: ${msg}` }] };
+      }
+    }
+
+    if (fetch_engine === "firecrawl") {
+      const apiKey = config.firecrawlApiKey;
+      if (!apiKey) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "FIRECRAWL_API_KEY is not set. Set the environment variable to use fetch_engine=firecrawl.",
+            },
+          ],
+        };
+      }
+      await logInfo(ctx, `Begin Fetch (Firecrawl): ${url}`, config.debugEnabled);
+      const result = await fetchWithFirecrawl(url, config.firecrawlApiUrl, apiKey, ctx);
+      await logInfo(
+        ctx,
+        result ? "Fetch Finished (Firecrawl)!" : "Firecrawl returned no content.",
+        config.debugEnabled
+      );
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: result ?? "Firecrawl Scrape returned no content for this URL.",
+          },
+        ],
+      };
+    }
+
+    return { content: [{ type: "text" as const, text: `Unknown fetch_engine: ${fetch_engine}` }] };
   }
 );
 
@@ -199,6 +274,11 @@ Notes
       model: openaiConfig.model,
       status: validation.valid ? "✅ Configuration valid" : "❌ Configuration invalid",
       test_result: testResult,
+      fetch_engines: {
+        llm: "default, uses OpenAI-compatible model",
+        tavily_configured: Boolean(config.tavilyApiKey),
+        firecrawl_configured: Boolean(config.firecrawlApiKey),
+      },
     };
 
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -236,10 +316,9 @@ Notes
 - This setting will be used for all future search and fetch operations
 - You can verify available models using the get_config_info tool`,
     inputSchema: {
-      model: z.union([
-        z.enum(["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]),
-        z.string()
-      ]).describe("Model ID")
+      model: z
+        .union([z.enum(["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]), z.string()])
+        .describe("Model ID"),
     },
   },
   async ({ model }) => {

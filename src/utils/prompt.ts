@@ -109,7 +109,6 @@ export const fetchPrompt = `
 2. 返回完整的结构化 Markdown 文档
 `;
 
-
 /**
  * 获取搜索提示词
  */

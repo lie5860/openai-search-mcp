@@ -132,10 +132,17 @@ export interface WebSearchParams {
 }
 
 /**
+ * web_fetch 可选引擎：默认 llm，可通过参数指定 tavily / firecrawl
+ */
+export type FetchEngine = "llm" | "tavily" | "firecrawl";
+
+/**
  * web_fetch 工具参数
  */
 export interface WebFetchParams {
   url: string;
+  /** 本次抓取使用的引擎，默认 "llm"；可选 "tavily" / "firecrawl"（需配置对应 API Key） */
+  fetch_engine?: FetchEngine;
 }
 
 /**

@@ -20,17 +20,19 @@
 
 ## 📖 概述
 
-OpenAI Search MCP 是一个高性能的 Node.js/TypeScript 版本的 MCP（Model Context Protocol）服务器，通过集成 OpenAI 兼容 API 的强大能力，为 Claude、Claude Code 等 AI 助手提供实时网络搜索和网页内容抓取功能。
+OpenAI Search MCP 是一个高性能的 Node.js/TypeScript MCP 服务器，将**你配置的 OpenAI 兼容 API** 接入 Claude、Claude Code 等 AI 助手。后端模型**需具备搜索能力**（搜索始终由你配置的端点完成）。网页抓取支持三种引擎：**LLM**（默认，使用同一模型的 browse 能力）、**Tavily**、**Firecrawl**，通过 `fetch_engine` 参数按需选择，在需要专业抓取与抗反爬时可选用 Tavily/Firecrawl。
 
 ### ✨ 核心特性
 
-- 🌐 **实时网络搜索** - 突破 AI 知识截止限制，获取最新信息
-- 🔍 **智能网页抓取** - 提取完整网页内容并转换为结构化 Markdown
-- 🔄 **自动重试机制** - 智能处理网络波动和临时错误
-- 📦 **即插即用** - 通过 `npx` 一键运行，无需复杂配置
-- ⚡ **高性能** - 冷启动 < 1 秒，内存占用 < 30MB
-- 🔒 **类型安全** - 完整的 TypeScript 类型定义
-- 🛠️ **Fetch Polyfill** - 兼容所有 Node.js 18+ 环境
+- 🌐 **实时网络搜索** - 由你的 OpenAI 兼容模型提供（需具备 search 能力）
+- 🔍 **可配置的网页抓取** - 默认 LLM；可选 **Tavily** 或 **Firecrawl**（`fetch_engine`），真实 HTTP 抓取与抗反爬
+- 📄 **结构化 Markdown** - 整页提取并转为 Markdown
+
+**为什么提供多种 fetch 引擎？** 实测中：(1) **LLM fetch 通常比专业抓取更慢**（例如约 14s vs Tavily/Firecrawl 约 1s）。(2) **LLM 可能使用缓存或推断内容**，并**自行加入无关信息**，结果未必与当前页面一致。需要**更快、忠实、未篡改**的正文时，可选用 `fetch_engine=tavily` 或 `fetch_engine=firecrawl`。
+- 🔄 **自动重试** - 应对网络与临时 API 错误
+- 📦 **即插即用** - `npx` 一行启动，配置简单
+- ⚡ **高性能** - 冷启动 < 1 秒，内存占用低
+- 🔒 **类型安全** - 完整 TypeScript 类型定义
 
 ---
 
@@ -154,25 +156,29 @@ openai-search
 
 ### 2️⃣ `web_fetch` - 网页抓取
 
-提取指定 URL 的完整内容并转换为 Markdown 格式。
+从指定 URL 提取完整内容并返回为 Markdown。可指定抓取使用的引擎。
 
 **参数：**
 - `url` (必填) - 要抓取的网页地址
+- `fetch_engine` (可选) - `"llm"`（默认）| `"tavily"` | `"firecrawl"`
+  - **llm**：使用你的 OpenAI 兼容模型（需模型具备 browse 能力）。通常较慢；可能返回缓存或模型推断内容，有时会多出无关文字。
+  - **tavily**：[Tavily Extract API](https://docs.tavily.com)（需设置 `TAVILY_API_KEY`）。通常更快且返回真实页面内容。
+  - **firecrawl**：[Firecrawl Scrape API](https://docs.firecrawl.dev)（需设置 `FIRECRAWL_API_KEY`）。通常更快且返回真实页面内容。
 
 **使用示例：**
 ```
-抓取 https://github.com/lie5860/openai-search-mcp 的 README 内容
-获取 https://www.typescriptlang.org/docs 的完整文档
+抓取 https://github.com/lie5860/openai-search-mcp 的 README
+用 Tavily 抓取 https://example.com（fetch_engine=tavily）
+获取 https://www.typescriptlang.org/docs 的完整文档（默认 LLM）
 ```
 
 ### 3️⃣ `get_config_info` - 配置诊断
 
-获取当前配置信息和连接状态。
+获取当前配置与连接状态。
 
 **返回信息：**
-- API URL 和模型配置
-- 连接测试结果
-- 响应时间和可用模型信息
+- API URL、模型及连接测试（响应时间、可用模型列表）
+- **fetch_engines**：Tavily / Firecrawl 是否已配置（供 `web_fetch` 使用）
 
 **使用示例：**
 ```
@@ -225,8 +231,10 @@ npm run build
 # 运行开发服务器
 npm run dev
 
-# 运行测试
-npm test
+# 自测（需先 build）
+npm run test-server    # 配置 + 搜索 + LLM 抓取
+npm run test-search    # 搜索 + LLM 抓取
+npm run test-fetch     # 三种抓取引擎（llm / tavily / firecrawl）
 ```
 
 ### 项目结构
@@ -262,11 +270,15 @@ openai-search-mcp/
 
 | 变量名 | 说明 | 必填 | 默认值 |
 |--------|------|------|--------|
-| `OPENAI_API_URL` | OpenAI 兼容的 API 端点 | 是 | - |
+| `OPENAI_API_URL` | OpenAI 兼容的 API 端点（需支持搜索） | 是 | - |
 | `OPENAI_API_KEY` | 你的 API 密钥 | 是 | - |
 | `OPENAI_MODEL` | 模型标识符 | 否 | `gpt-4o` |
 | `DEBUG` | 调试模式 | 否 | `false` |
 | `OPENAI_LOG_LEVEL` | 日志级别 | 否 | `INFO` |
+| `TAVILY_API_KEY` | Tavily API 密钥（`web_fetch` 使用 `fetch_engine=tavily` 时） | 否 | - |
+| `TAVILY_API_URL` | Tavily API 地址 | 否 | `https://api.tavily.com` |
+| `FIRECRAWL_API_KEY` | Firecrawl API 密钥（`web_fetch` 使用 `fetch_engine=firecrawl` 时） | 否 | - |
+| `FIRECRAWL_API_URL` | Firecrawl API 地址 | 否 | `https://api.firecrawl.dev/v2` |
 
 ---
 

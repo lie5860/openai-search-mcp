@@ -34,6 +34,7 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 test-*.js
+test-results/
 
 # Temporary files
 tmp/
