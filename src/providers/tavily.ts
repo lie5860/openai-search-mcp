@@ -33,11 +33,10 @@ export async function fetchWithTavily(
     failed_results?: Array<{ url: string; error: string }>;
   };
 
+  // 与官方行为一致：failed_results 或 results 为空时均视为无内容，返回 null（不抛错）
   if (data.failed_results && data.failed_results.length > 0) {
-    const fail = data.failed_results[0];
-    throw new Error(`Tavily Extract failed for ${fail.url}: ${fail.error}`);
+    return null;
   }
-
   if (!data.results || data.results.length === 0) {
     return null;
   }

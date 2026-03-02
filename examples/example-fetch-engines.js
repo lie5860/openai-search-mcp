@@ -7,7 +7,7 @@
  *   node examples/example-fetch-engines.js
  * 可选：在项目根创建 .env 或设置环境变量 OPENAI_*、TAVILY_API_KEY、FIRECRAWL_API_KEY
  *
- * 测试完成后会在项目根的 test-results/ 目录生成每个引擎的 Markdown 结果文件，
+ * 测试完成后会在 test-results/ 目录生成每个引擎的 Markdown 结果文件（无时间戳，每次覆盖），
  * 以及一份汇总对比报告 _comparison.md。
  */
 
@@ -20,7 +20,7 @@ import { OpenAISearchProvider } from "../dist/providers/openai.js";
 import { fetchWithTavily } from "../dist/providers/tavily.js";
 import { fetchWithFirecrawl } from "../dist/providers/firecrawl.js";
 
-const TEST_URL = "https://httpbin.org/html";
+const TEST_URL = "https://www.google.com";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RESULTS_DIR = path.resolve(__dirname, "..", "test-results");
@@ -32,8 +32,7 @@ function ensureResultsDir() {
 }
 
 function saveResult(engine, content, elapsed, error) {
-  const ts = new Date().toISOString().replace(/[:.]/g, "-");
-  const filename = `${engine}-${ts}.md`;
+  const filename = `${engine}.md`;
   const filepath = path.join(RESULTS_DIR, filename);
 
   let md = `# Fetch 结果 — 引擎: ${engine}\n\n`;
@@ -125,7 +124,7 @@ async function main() {
   const allResults = [];
 
   // --- 引擎 llm ---
-  console.log("3. 测试 fetch_engine=llm ...");
+  console.log("3. 测试 fetch_engine=llm ...", openaiConfig.apiKey);
   {
     const t0 = Date.now();
     let content = null, error = null;
